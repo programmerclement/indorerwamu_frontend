@@ -14,6 +14,7 @@ const TipsPage        = lazy(() => import('@/pages/TipsPage'))
 const RewardsPage     = lazy(() => import('@/pages/RewardsPage'))
 const AnalyticsPage   = lazy(() => import('@/pages/AnalyticsPage'))
 const SettingsPage    = lazy(() => import('@/pages/SettingsPage'))
+const ProfilePage     = lazy(() => import('@/pages/ProfilePage'))
 
 export default function AppRouter() {
   return (
@@ -34,6 +35,7 @@ export default function AppRouter() {
               <Route path="/rewards" element={<RewardsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
 

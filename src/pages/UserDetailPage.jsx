@@ -61,10 +61,26 @@ export default function UserDetailPage() {
                 {user?.isAdmin && <Badge variant="blue">Admin</Badge>}
                 {user?.isSuspended && <Badge variant="red">Suspended</Badge>}
               </div>
-              <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-slate-400">
-                <span className="flex items-center gap-1.5"><Mail size={13} />{user?.email}</span>
+              <div className="grid gap-3 text-sm text-slate-400 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Name</p>
+                  <p className="mt-1 font-medium text-slate-200">{user?.name || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Email</p>
+                  <p className="mt-1 flex items-center gap-1.5 font-medium text-slate-200"><Mail size={13} />{user?.email || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Telephone</p>
+                  <p className="mt-1 font-medium text-slate-200">{user?.telephone || user?.phone || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Joined</p>
+                  <p className="mt-1 flex items-center gap-1.5 font-medium text-slate-200"><Calendar size={13} />{formatDate(user?.createdAt)}</p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-400">
                 <span className="flex items-center gap-1.5"><Globe size={13} />{user?.language === 'rw' ? 'Kinyarwanda' : 'English'}</span>
-                <span className="flex items-center gap-1.5"><Calendar size={13} />Joined {formatDate(user?.createdAt)}</span>
               </div>
             </div>
           </motion.div>

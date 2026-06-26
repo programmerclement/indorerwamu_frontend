@@ -1,16 +1,16 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Search, UserPlus, Shield, Ban, Trash2, Eye,
-  ChevronLeft, ChevronRight, Filter, RefreshCw
+  ChevronLeft, ChevronRight, RefreshCw
 } from 'lucide-react'
 import { usersApi } from '@/api/users'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Card from '@/components/ui/Card'
-import { ConfirmModal } from '@/components/ui/Modal'
+import Modal, { ConfirmModal } from '@/components/ui/Modal'
 import { TableSkeleton } from '@/components/ui/Skeleton'
 import toast from 'react-hot-toast'
 
@@ -23,10 +23,12 @@ const FILTERS = [
 
 function useDebounce(value, delay = 400) {
   const [debouncedValue, setDebouncedValue] = useState(value)
-  useState(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay)
-    return () => clearTimeout(timer)
-  })
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [value, delay])
+
   return debouncedValue
 }
 
@@ -38,6 +40,11 @@ export default function UsersPage() {
   const [filter, setFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [suspendTarget, setSuspendTarget] = useState(null)
+  const [resetTarget, setResetTarget] = useState(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [createAdminOpen, setCreateAdminOpen] = useState(false)
+  const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '' })
 
   const debouncedSearch = useDebounce(search)
 
@@ -51,9 +58,32 @@ export default function UsersPage() {
     mutationFn: (id) => usersApi.suspendUser(id),
     onSuccess: (res) => {
       toast.success(res.message)
+      setSuspendTarget(null)
       qc.invalidateQueries({ queryKey: ['admin-users'] })
     },
     onError: (err) => toast.error(err.response?.data?.message || 'Action failed'),
+  })
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ id, password }) => usersApi.resetPassword(id, password),
+    onSuccess: (res) => {
+      toast.success(res.message || 'Password reset successfully')
+      setResetTarget(null)
+      setNewPassword('')
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Password reset failed'),
+  })
+
+  const createAdminMutation = useMutation({
+    mutationFn: (payload) => usersApi.createAdmin(payload),
+    onSuccess: (res) => {
+      toast.success(res.message || 'Admin account created successfully')
+      setCreateAdminOpen(false)
+      setAdminForm({ name: '', email: '', password: '' })
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Unable to create admin account'),
   })
 
   const deleteMutation = useMutation({
@@ -76,6 +106,40 @@ export default function UsersPage() {
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
+  const handleSuspendConfirm = () => {
+    if (!suspendTarget) return
+    suspendMutation.mutate(suspendTarget._id)
+  }
+
+  const handleResetConfirm = () => {
+    if (!resetTarget) return
+    if (!newPassword.trim() || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    resetPasswordMutation.mutate({ id: resetTarget._id, password: newPassword })
+  }
+
+  const handleCreateAdmin = () => {
+    if (!adminForm.name.trim() || !adminForm.email.trim() || !adminForm.password.trim()) {
+      toast.error('Please fill in all fields')
+      return
+    }
+
+    if (adminForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+
+    createAdminMutation.mutate({
+      name: adminForm.name.trim(),
+      email: adminForm.email.trim().toLowerCase(),
+      password: adminForm.password,
+      language: 'en',
+    })
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -86,15 +150,25 @@ export default function UsersPage() {
             {pagination ? `${pagination.total} total users` : 'Loading…'}
           </p>
         </div>
-        <Button
-          icon={RefreshCw}
-          variant="outline"
-          size="sm"
-          onClick={() => qc.invalidateQueries({ queryKey: ['admin-users'] })}
-          loading={isFetching}
-        >
-          Refresh
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            icon={UserPlus}
+            variant="primary"
+            size="sm"
+            onClick={() => setCreateAdminOpen(true)}
+          >
+            Add Admin
+          </Button>
+          <Button
+            icon={RefreshCw}
+            variant="outline"
+            size="sm"
+            onClick={() => qc.invalidateQueries({ queryKey: ['admin-users'] })}
+            loading={isFetching}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters + Search */}
@@ -199,12 +273,22 @@ export default function UsersPage() {
                           <Eye size={15} />
                         </button>
                         <button
-                          onClick={() => suspendMutation.mutate(user._id)}
+                          onClick={() => setSuspendTarget(user)}
                           disabled={suspendMutation.isPending}
                           className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-500/10 rounded-lg transition-all"
                           title={user.isSuspended ? 'Activate' : 'Suspend'}
                         >
                           <Ban size={15} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setResetTarget(user)
+                            setNewPassword('')
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all"
+                          title="Reset Password"
+                        >
+                          <RefreshCw size={15} />
                         </button>
                         {!user.isAdmin && (
                           <button
@@ -243,6 +327,111 @@ export default function UsersPage() {
           </div>
         )}
       </Card>
+
+      {/* Suspend Confirm */}
+      <ConfirmModal
+        open={!!suspendTarget}
+        onClose={() => setSuspendTarget(null)}
+        onConfirm={handleSuspendConfirm}
+        loading={suspendMutation.isPending}
+        title={suspendTarget?.isSuspended ? 'Activate User' : 'Suspend User'}
+        message={suspendTarget?.isSuspended
+          ? `Are you sure you want to activate "${suspendTarget?.name}"?`
+          : `Are you sure you want to suspend "${suspendTarget?.name}"?`}
+        confirmLabel={suspendTarget?.isSuspended ? 'Activate User' : 'Suspend User'}
+      />
+
+      <Modal
+        open={!!resetTarget}
+        onClose={() => {
+          setResetTarget(null)
+          setNewPassword('')
+        }}
+        title="Reset Password"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-400">
+            Set a new password for <span className="font-medium text-slate-200">{resetTarget?.name}</span>.
+          </p>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-300">New password</span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter a secure password"
+              className="w-full rounded-xl border border-slate-600 bg-slate-700/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            />
+          </label>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => {
+              setResetTarget(null)
+              setNewPassword('')
+            }}>Cancel</Button>
+            <Button variant="primary" onClick={handleResetConfirm} loading={resetPasswordMutation.isPending}>
+              Save Password
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={createAdminOpen}
+        onClose={() => {
+          setCreateAdminOpen(false)
+          setAdminForm({ name: '', email: '', password: '' })
+        }}
+        title="Create Admin Account"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-300">Full name</span>
+            <input
+              type="text"
+              value={adminForm.name}
+              onChange={(e) => setAdminForm((value) => ({ ...value, name: e.target.value }))}
+              placeholder="Enter admin name"
+              className="w-full rounded-xl border border-slate-600 bg-slate-700/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-300">Email</span>
+            <input
+              type="email"
+              value={adminForm.email}
+              onChange={(e) => setAdminForm((value) => ({ ...value, email: e.target.value }))}
+              placeholder="admin@example.com"
+              className="w-full rounded-xl border border-slate-600 bg-slate-700/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-300">Temporary password</span>
+            <input
+              type="password"
+              value={adminForm.password}
+              onChange={(e) => setAdminForm((value) => ({ ...value, password: e.target.value }))}
+              placeholder="Minimum 6 characters"
+              className="w-full rounded-xl border border-slate-600 bg-slate-700/70 px-3 py-2.5 text-sm text-slate-100 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+            />
+          </label>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCreateAdminOpen(false)
+                setAdminForm({ name: '', email: '', password: '' })
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleCreateAdmin} loading={createAdminMutation.isPending}>
+              Create Admin
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirm */}
       <ConfirmModal

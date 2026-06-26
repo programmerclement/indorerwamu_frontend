@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2, WifiOff, ServerCrash, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle2, WifiOff, ServerCrash, ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { authApi } from '@/api/auth'
 import toast from 'react-hot-toast'
@@ -67,9 +67,13 @@ export default function LoginPage() {
   // Forgot-password state
   const [showForgot,      setShowForgot]      = useState(false)
   const [fpEmail,         setFpEmail]         = useState('')
+  const [otp,             setOtp]             = useState('')
+  const [newPassword,     setNewPassword]     = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [fpLoading,       setFpLoading]       = useState(false)
   const [fpError,         setFpError]         = useState('')
   const [fpSuccess,       setFpSuccess]       = useState(false)
+  const [otpVerified,     setOtpVerified]     = useState(false)
 
   /* ── login submit ── */
   const handleSubmit = async (e) => {
@@ -104,8 +108,9 @@ export default function LoginPage() {
     if (!fpEmail) { setFpError('Please enter your email address.'); return }
     setFpLoading(true)
     try {
-      await authApi.forgotPassword(fpEmail)
+      const data = await authApi.forgotPassword(fpEmail)
       setFpSuccess(true)
+      toast.success(data.message || 'Reset code sent to your email.')
     } catch (err) {
       if (!err.response) {
         setFpError('Cannot reach the server. Make sure the backend is running.')
@@ -117,11 +122,55 @@ export default function LoginPage() {
     }
   }
 
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    setFpError('')
+    if (!fpEmail || !otp) {
+      setFpError('Please enter your email and OTP.')
+      return
+    }
+    setFpLoading(true)
+    try {
+      await authApi.verifyOtp({ email: fpEmail, otp })
+      setOtpVerified(true)
+      toast.success('OTP verified. Please enter your new password.')
+    } catch (err) {
+      setFpError(err.response?.data?.message || 'Unable to verify OTP.')
+    } finally {
+      setFpLoading(false)
+    }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    setFpError('')
+    if (!fpEmail || !otp || !newPassword) {
+      setFpError('Please complete all fields before resetting your password.')
+      return
+    }
+    setFpLoading(true)
+    try {
+      const data = await authApi.resetPassword({ email: fpEmail, otp, password: newPassword })
+      toast.success(data.message || 'Password reset successful.')
+      backToLogin()
+      setPassword('')
+      setEmail(fpEmail)
+    } catch (err) {
+      setFpError(err.response?.data?.message || 'Unable to reset password.')
+    } finally {
+      setFpLoading(false)
+    }
+  }
+
   const backToLogin = () => {
     setShowForgot(false)
     setFpEmail('')
+    setOtp('')
+    setNewPassword('')
+    setShowNewPassword(false)
     setFpError('')
     setFpSuccess(false)
+    setOtpVerified(false)
   }
 
   /* ─── render ─────────────────────────────────────────── */
@@ -146,9 +195,9 @@ export default function LoginPage() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500 shadow-2xl shadow-blue-500/30 mb-4"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white/10 shadow-2xl shadow-blue-500/10 mb-4 p-2"
           >
-            <Brain size={32} className="text-white" />
+            <img src="/logo.png" alt="Indorerwamu logo" className="w-full h-full object-contain" />
           </motion.div>
           <h1 className="text-2xl font-bold text-slate-100">Indorerwamu Admin</h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -273,33 +322,140 @@ export default function LoginPage() {
                   Back to login
                 </button>
 
-                {fpSuccess ? (
-                  /* Success state */
-                  <motion.div
+                {fpSuccess && !otpVerified ? (
+                  <motion.form
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-4 space-y-3"
+                    onSubmit={handleVerifyOtp}
+                    className="space-y-4"
                   >
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/15 mb-1">
-                      <CheckCircle2 size={24} className="text-green-400" />
+                    <div className="text-center py-2 space-y-2">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/15 mb-1">
+                        <CheckCircle2 size={24} className="text-green-400" />
+                      </div>
+                      <p className="text-slate-200 font-medium">OTP sent to your email</p>
+                      <p className="text-sm text-slate-400">Enter the 6-digit code we sent to {fpEmail}.</p>
                     </div>
-                    <p className="text-slate-200 font-medium">Reset token generated</p>
-                    <p className="text-sm text-slate-400">
-                      Check the <span className="text-blue-400 font-medium">backend server logs</span> for the reset token. Use it with the <code className="text-blue-400 bg-slate-700 px-1.5 py-0.5 rounded text-xs">/reset-password</code> endpoint.
-                    </p>
-                    <button
-                      onClick={backToLogin}
-                      className="mt-2 text-sm text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-2"
+
+                    <AnimatePresence>
+                      {fpError && (
+                        <motion.div
+                          key="fp-err"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3"
+                        >
+                          <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-red-400">{fpError}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-slate-300">One-time password</label>
+                      <input
+                        type="text"
+                        value={otp}
+                        onChange={e => setOtp(e.target.value)}
+                        placeholder="123456"
+                        className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoFocus
+                      />
+                    </div>
+
+                    <motion.button
+                      type="submit"
+                      disabled={fpLoading}
+                      whileHover={{ scale: fpLoading ? 1 : 1.02 }}
+                      whileTap={{ scale: fpLoading ? 1 : 0.98 }}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
                     >
-                      Return to login
-                    </button>
-                  </motion.div>
+                      {fpLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Verifying…
+                        </>
+                      ) : 'Verify OTP'}
+                    </motion.button>
+                  </motion.form>
+                ) : otpVerified ? (
+                  <motion.form
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onSubmit={handleResetPassword}
+                    className="space-y-4"
+                  >
+                    <div className="text-center py-2 space-y-2">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/15 mb-1">
+                        <CheckCircle2 size={24} className="text-green-400" />
+                      </div>
+                      <p className="text-slate-200 font-medium">Create a new password</p>
+                      <p className="text-sm text-slate-400">Choose a strong password for {fpEmail}.</p>
+                    </div>
+
+                    <AnimatePresence>
+                      {fpError && (
+                        <motion.div
+                          key="fp-err"
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3"
+                        >
+                          <AlertCircle size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-sm text-red-400">{fpError}</p>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-sm font-medium text-slate-300">New password</label>
+                      <div className="relative">
+                        <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full bg-slate-700/50 border border-slate-600 rounded-xl pl-11 pr-12 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                          autoComplete="new-password"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(s => !s)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <motion.button
+                      type="submit"
+                      disabled={fpLoading}
+                      whileHover={{ scale: fpLoading ? 1 : 1.02 }}
+                      whileTap={{ scale: fpLoading ? 1 : 0.98 }}
+                      className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                    >
+                      {fpLoading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Resetting…
+                        </>
+                      ) : 'Reset password'}
+                    </motion.button>
+                  </motion.form>
                 ) : (
                   /* Forgot form */
                   <form onSubmit={handleForgot} className="space-y-4">
                     <div>
                       <p className="text-sm text-slate-400 mb-4">
-                        Enter your account email and a password-reset token will be generated in the server logs.
+                        Enter your account email and we will send a one-time password to your inbox.
                       </p>
 
                       {/* Error */}
@@ -345,7 +501,7 @@ export default function LoginPage() {
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Sending…
                         </>
-                      ) : 'Send reset token'}
+                      ) : 'Send OTP'}
                     </motion.button>
                   </form>
                 )}
@@ -361,14 +517,6 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Setup hint */}
-        {!showForgot && (
-          <div className="mt-4 p-4 bg-slate-800/50 border border-slate-700/30 rounded-xl">
-            <p className="text-xs text-slate-500 text-center">
-              First time? Run <code className="text-blue-400 bg-slate-700 px-1.5 py-0.5 rounded">node scripts/make-admin.js your@email.com</code> in the Backend folder
-            </p>
-          </div>
-        )}
       </motion.div>
     </div>
   )
