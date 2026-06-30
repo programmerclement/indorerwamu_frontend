@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import ProtectedRoute from './ProtectedRoute'
 import DashboardLayout from '@/layouts/DashboardLayout'
@@ -14,6 +14,8 @@ const TipsPage        = lazy(() => import('@/pages/TipsPage'))
 const RewardsPage     = lazy(() => import('@/pages/RewardsPage'))
 const AnalyticsPage   = lazy(() => import('@/pages/AnalyticsPage'))
 const SettingsPage    = lazy(() => import('@/pages/SettingsPage'))
+const CounselorsPage    = lazy(() => import('@/pages/CounselorsPage'))
+const HealthCentersPage = lazy(() => import('@/pages/HealthCentersPage'))
 const ProfilePage     = lazy(() => import('@/pages/ProfilePage'))
 
 export default function AppRouter() {
@@ -29,6 +31,8 @@ export default function AppRouter() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/users/:id" element={<UserDetailPage />} />
+              <Route path="/counselors" element={<CounselorsPage />} />
+              <Route path="/healthcenters" element={<HealthCentersPage />} />
               <Route path="/challenges" element={<ChallengesPage />} />
               <Route path="/articles" element={<ArticlesPage />} />
               <Route path="/tips" element={<TipsPage />} />
@@ -45,3 +49,6 @@ export default function AppRouter() {
     </BrowserRouter>
   )
 }
+
+
+

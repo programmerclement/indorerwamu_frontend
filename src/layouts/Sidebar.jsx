@@ -1,14 +1,16 @@
-import { NavLink, useLocation } from 'react-router-dom'
+﻿import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, Target, BookOpen, Lightbulb,
-  Trophy, BarChart3, Settings, ChevronLeft, UserCircle2
+  Trophy, BarChart3, Settings, ChevronLeft, UserCircle2, HeartHandshake, Hospital
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
   { to: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/users',      icon: Users,           label: 'Users' },
+  { to: '/users',      icon: Users,            label: 'Users' },
+  { to: '/counselors',     icon: HeartHandshake,   label: 'Counselors' },
+  { to: '/healthcenters', icon: Hospital,          label: 'Health Centers' },
   { to: '/challenges', icon: Target,          label: 'Challenges' },
   { to: '/articles',   icon: BookOpen,        label: 'Articles' },
   { to: '/tips',       icon: Lightbulb,       label: 'Wellness Tips' },
@@ -115,3 +117,5 @@ export default function Sidebar({ collapsed, onToggle }) {
     </motion.aside>
   )
 }
+
+
