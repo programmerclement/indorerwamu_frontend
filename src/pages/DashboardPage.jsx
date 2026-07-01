@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  Users, Activity, Target, BookOpen, Lightbulb, Trophy,
-  UserPlus, TrendingUp, AlertTriangle
+  Users, Target, BookOpen, Lightbulb,
+  UserPlus, TrendingUp, AlertTriangle, UserCheck, Building2
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -83,17 +83,78 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {isLoading ? Array.from({ length: 8 }).map((_, i) => <StatCardSkeleton key={i} />) : (
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {isLoading ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />) : (
           <>
-            <StatCard title="Total Users"        value={overview?.totalUsers}        icon={Users}    color="blue"   subtitle="All registered accounts" />
-            <StatCard title="Active Users"       value={overview?.activeUsers}       icon={Activity} color="green"  subtitle="Logged mood last 7 days" />
-            <StatCard title="New This Month"     value={overview?.newUsersThisMonth} icon={UserPlus} color="purple" subtitle={`${overview?.newUsersThisWeek} this week`} />
-            <StatCard title="Total Mood Entries" value={overview?.totalMoods}        icon={TrendingUp} color="cyan" subtitle="All check-ins recorded" />
-            <StatCard title="Challenges"         value={overview?.totalChallenges}   icon={Target}   color="yellow" subtitle={`${overview?.totalCompletions} total completions`} />
-            <StatCard title="Articles"           value={overview?.totalArticles}     icon={BookOpen} color="blue"   subtitle="Education resources" />
-            <StatCard title="Wellness Tips"      value={overview?.totalTips}         icon={Lightbulb} color="green" subtitle="Mood-based tips" />
-            <StatCard title="Suspended Users"    value={overview?.suspendedUsers}    icon={AlertTriangle} color="red" subtitle={`${overview?.adminUsers} admins`} />
+            {/* 1 — All user counts combined */}
+            <StatCard
+              title="Users"
+              value={overview?.totalUsers}
+              icon={Users}
+              color="blue"
+              subtitle="Total registered accounts"
+              miniStats={[
+                { label: 'Active',    value: overview?.activeUsers,    color: 'text-green-400' },
+                { label: 'Suspended', value: overview?.suspendedUsers, color: 'text-red-400'   },
+                { label: 'Admins',    value: overview?.adminUsers,     color: 'text-purple-400' },
+              ]}
+            />
+
+            {/* 2 — New signups */}
+            <StatCard
+              title="New Users"
+              value={overview?.newUsersThisMonth}
+              icon={UserPlus}
+              color="purple"
+              subtitle="Joined this month"
+              miniStats={[
+                { label: 'This week', value: overview?.newUsersThisWeek, color: 'text-purple-400' },
+              ]}
+            />
+
+            {/* 3 — Mood & challenge engagement */}
+            <StatCard
+              title="Mood Check-ins"
+              value={overview?.totalMoods}
+              icon={TrendingUp}
+              color="cyan"
+              subtitle="All-time entries"
+              miniStats={[
+                { label: 'Challenge completions', value: overview?.totalCompletions, color: 'text-cyan-400' },
+              ]}
+            />
+
+            {/* 4 — Content library combined */}
+            <StatCard
+              title="Content Library"
+              value={(overview?.totalArticles ?? 0) + (overview?.totalTips ?? 0) + (overview?.totalChallenges ?? 0)}
+              icon={BookOpen}
+              color="yellow"
+              subtitle="Total resources"
+              miniStats={[
+                { label: 'Articles',   value: overview?.totalArticles,   color: 'text-yellow-400' },
+                { label: 'Tips',       value: overview?.totalTips,       color: 'text-yellow-400' },
+                { label: 'Challenges', value: overview?.totalChallenges, color: 'text-yellow-400' },
+              ]}
+            />
+
+            {/* 5 — Counselors */}
+            <StatCard
+              title="Counselors"
+              value={overview?.totalCounselors}
+              icon={UserCheck}
+              color="green"
+              subtitle="Mental health professionals"
+            />
+
+            {/* 6 — Health Centers */}
+            <StatCard
+              title="Health Centers"
+              value={overview?.totalHealthCenters}
+              icon={Building2}
+              color="teal"
+              subtitle="Registered facilities"
+            />
           </>
         )}
       </div>
