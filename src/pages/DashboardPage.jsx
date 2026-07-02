@@ -83,7 +83,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {isLoading ? Array.from({ length: 6 }).map((_, i) => <StatCardSkeleton key={i} />) : (
           <>
             {/* 1 — All user counts combined */}
@@ -160,14 +160,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
         {/* Monthly Growth */}
         <Card className="lg:col-span-2">
           <CardHeader title="User Growth" subtitle="Monthly new registrations" />
           {isLoading ? (
             <div className="h-56 bg-slate-700 rounded-xl animate-pulse" />
           ) : growthData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={220}>
+            <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={growthData}>
                 <defs>
                   <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
@@ -228,7 +228,7 @@ export default function DashboardPage() {
         {isLoading ? (
           <div className="h-56 bg-slate-700 rounded-xl animate-pulse" />
         ) : mergedDaily.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart data={mergedDaily} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="name" tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
